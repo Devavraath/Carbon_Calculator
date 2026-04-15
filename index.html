@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>What's Your Carbon Footprint?</title>
+<title>🌍 What's Your Carbon Footprint?</title>
 <style>
   :root {
     --bg: #0f1a14; --panel: #16241c; --ink: #f1efe7; --muted: #9bb0a3;
@@ -17,7 +17,7 @@
     line-height: 1.5; min-height: 100vh;
   }
   .wrap {
-    max-width: 640px; margin: 0 auto; padding: 32px 20px 40px;
+    max-width: 640px; margin: 0 auto; padding: 28px 20px 40px;
     min-height: 100vh; display: flex; flex-direction: column;
   }
   .progress-row { display: flex; gap: 6px; margin-bottom: 24px; }
@@ -25,17 +25,26 @@
   .pip.done { background: var(--accent); }
   .pip.current { background: var(--accent); opacity: 0.6; }
   .step-label { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
-  h1 { font-size: clamp(26px, 5vw, 36px); margin: 0 0 28px; letter-spacing: -0.02em; }
+  .emoji-big { font-size: 56px; line-height: 1; margin-bottom: 12px; }
+  h1 { font-size: clamp(24px, 5vw, 32px); margin: 0 0 10px; letter-spacing: -0.02em; }
+  .context { color: var(--muted); font-size: 14px; margin: 0 0 24px; font-style: italic; }
   .options { display: grid; gap: 10px; flex: 1; }
   .opt {
     display: flex; justify-content: space-between; align-items: center;
-    padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px;
     background: var(--panel); color: var(--ink); cursor: pointer;
     text-align: left; font-size: 16px; transition: all 0.15s ease; font-family: inherit;
+    gap: 12px;
   }
   .opt:hover { border-color: var(--accent-dim); }
+  .opt:active { transform: scale(0.98); }
   .opt.selected { background: rgba(126,201,111,0.15); border-color: var(--accent); }
-  .opt .val { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .opt .left { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .opt .emoji { font-size: 22px; flex-shrink: 0; }
+  .opt .text { display: flex; flex-direction: column; min-width: 0; }
+  .opt .label-text { font-size: 15px; }
+  .opt .vibe { font-size: 11px; color: var(--muted); }
+  .opt .val { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; flex-shrink: 0; }
   .opt.selected .val { color: var(--accent); font-weight: 600; }
   .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
   .btn {
@@ -47,60 +56,109 @@
   .btn:disabled { opacity: 0.3; cursor: not-allowed; }
   .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
   .btn.primary:hover:not(:disabled) { background: #95d886; }
-  .result-total { text-align: center; margin: 32px 0; }
-  .result-total .num { font-size: 96px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
-  .result-total .unit { font-size: 18px; color: var(--muted); margin-top: 4px; }
-  .verdict { text-align: center; font-size: 18px; margin: 16px 0 24px; padding: 14px; border-radius: 8px; }
+
+  /* Intro */
+  .intro { text-align: center; padding: 40px 0 20px; }
+  .intro .planet { font-size: 88px; margin-bottom: 20px; animation: spin 20s linear infinite; display: inline-block; }
+  @keyframes spin { from { transform: rotate(0); } to { transform: rotate(360deg); } }
+  .intro h1 { font-size: clamp(32px, 7vw, 48px); margin-bottom: 16px; }
+  .intro p { color: var(--muted); font-size: 16px; max-width: 420px; margin: 0 auto 28px; }
+  .intro .stats { display: flex; gap: 12px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+  .intro .stat { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 13px; }
+  .intro .stat b { display: block; color: var(--accent); font-size: 18px; }
+
+  /* Result */
+  .result-emoji { text-align: center; font-size: 96px; line-height: 1; margin: 20px 0 8px; }
+  .result-total { text-align: center; margin: 8px 0 24px; }
+  .result-total .num { font-size: 88px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .result-total .unit { font-size: 16px; color: var(--muted); margin-top: 4px; }
+  .verdict { text-align: center; font-size: 17px; margin: 16px 0 8px; padding: 16px; border-radius: 10px; line-height: 1.4; }
   .verdict.good { background: rgba(126,201,111,0.12); color: var(--good); }
   .verdict.warn { background: rgba(232,160,74,0.12); color: var(--warn); }
   .verdict.bad  { background: rgba(217,100,80,0.12);  color: var(--bad); }
-  .bar { height: 10px; background: #1f2f25; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
-  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--good), var(--warn) 50%, var(--bad)); transition: width 0.5s ease; }
-  .benchmarks { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
-  .benchmarks span strong { color: var(--ink); display: block; }
-  .breakdown { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 24px; }
+  .fact { text-align: center; font-size: 13px; color: var(--muted); margin: 0 0 24px; padding: 0 12px; }
+  .bar-wrap { margin-bottom: 8px; position: relative; padding-top: 18px; }
+  .bar { height: 12px; background: #1f2f25; border-radius: 6px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--good), var(--warn) 50%, var(--bad)); transition: width 0.8s ease; }
+  .you-marker { position: absolute; top: 0; transform: translateX(-50%); font-size: 16px; transition: left 0.8s ease; }
+  .benchmarks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 28px; }
+  .benchmarks span { text-align: center; flex: 1; }
+  .benchmarks span strong { color: var(--ink); display: block; font-size: 14px; }
+  .benchmarks span .em { font-size: 16px; display: block; margin-bottom: 2px; }
+  .breakdown { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
   .breakdown h3 { margin: 0 0 14px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
-  .brow { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .brow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
   .brow:last-child { border: none; }
+  .brow .left { display: flex; align-items: center; gap: 10px; }
+  .brow .em { font-size: 20px; }
   .brow .label { color: var(--ink); }
   .brow .sub { color: var(--muted); font-size: 12px; }
   .brow .v { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
-  .restart { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--ink); cursor: pointer; font-family: inherit; font-size: 15px; }
-  .restart:hover { border-color: var(--accent); }
+  .biggest { background: rgba(232,160,74,0.1); border: 1px solid rgba(232,160,74,0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px; }
+  .biggest b { color: var(--warn); }
+  .actions { display: flex; gap: 10px; }
+  .actions button { flex: 1; padding: 14px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--ink); cursor: pointer; font-family: inherit; font-size: 14px; }
+  .actions button:hover { border-color: var(--accent); }
 </style>
 </head>
 <body>
 <div class="wrap" id="app"></div>
 <script>
 const data = [
-  { key: "flights", title: "How many flights per year?", options: [
-    ["0 flights", 0], ["1–2 flights", 0.5], ["3–5 flights", 1.5],
-    ["6–10 flights", 4.5], ["10+ flights", 7.0]
-  ]},
-  { key: "driving", title: "Daily commute & driving?", options: [
-    ["WFH / no car", 0.1], ["Two-wheeler", 0.4], ["Car <10km/day", 0.8],
-    ["Car 10–30km/day", 1.8], ["Car 30km+/day", 3.0]
-  ]},
-  { key: "diet", title: "What's your diet?", options: [
-    ["Fully vegan", 0.5], ["Vegetarian", 0.9], ["Meat 1–2x/week", 1.2],
-    ["Meat 3–5x/week", 1.8], ["Meat daily", 2.5]
-  ]},
-  { key: "energy", title: "Home energy use (AC / heating)?", options: [
-    ["Fan only", 0.2], ["AC a few hours", 0.7], ["AC most of day", 1.4],
-    ["AC all day + night", 2.1], ["Central AC + heater", 3.0]
-  ]},
-  { key: "shopping", title: "Shopping & deliveries?", options: [
-    ["Buy very little", 0.2], ["Few times/year", 0.5], ["Monthly", 0.9],
-    ["Weekly online", 1.5], ["Daily Swiggy + shop", 2.0]
-  ]}
+  { key: "flights", emoji: "✈️", title: "How often do you fly?",
+    context: "One round-trip flight can wipe out a year of careful living.",
+    options: [
+      ["🚫", "0 flights", "Grounded and proud", 0],
+      ["🛫", "1–2 flights", "Annual getaway", 0.5],
+      ["✈️", "3–5 flights", "Frequent flyer-ish", 1.5],
+      ["🌍", "6–10 flights", "Always in transit", 4.5],
+      ["🚀", "10+ flights", "Lounge regular", 7.0]
+    ]},
+  { key: "driving", emoji: "🚗", title: "How do you get around?",
+    context: "Petrol cars emit ~2.3 kg CO₂ per litre. It adds up fast.",
+    options: [
+      ["🏠", "WFH / no car", "Pajamas all day", 0.1],
+      ["🛵", "Two-wheeler", "Weaving through traffic", 0.4],
+      ["🚙", "Car <10km/day", "Short hops", 0.8],
+      ["🚗", "Car 10–30km/day", "Regular commute", 1.8],
+      ["🛻", "Car 30km+/day", "Road warrior", 3.0]
+    ]},
+  { key: "diet", emoji: "🍽️", title: "What's on your plate?",
+    context: "Beef = ~60kg CO₂ per kg. Lentils = ~0.9kg. Big difference.",
+    options: [
+      ["🌱", "Fully vegan", "Plant-powered", 0.5],
+      ["🥗", "Vegetarian", "No meat, no fuss", 0.9],
+      ["🐟", "Meat 1–2x/week", "Mostly veggies", 1.2],
+      ["🍗", "Meat 3–5x/week", "Standard mix", 1.8],
+      ["🥩", "Meat daily", "Carnivore mode", 2.5]
+    ]},
+  { key: "energy", emoji: "❄️", title: "How cool do you keep your home?",
+    context: "AC pulls ~1.5 kWh/hr. India's grid is ~70% coal.",
+    options: [
+      ["🪭", "Fan only", "Old-school cool", 0.2],
+      ["🌬️", "AC a few hours", "Bedtime only", 0.7],
+      ["❄️", "AC most of day", "Comfortable always", 1.4],
+      ["🥶", "AC all day + night", "24/7 chill", 2.1],
+      ["🏔️", "Central AC + heater", "Climate-controlled palace", 3.0]
+    ]},
+  { key: "shopping", emoji: "📦", title: "How much do you shop & order?",
+    context: "Every package = trucks, packaging, returns, warehouses.",
+    options: [
+      ["🧘", "Buy very little", "Minimalist mode", 0.2],
+      ["🛍️", "Few times/year", "Need-based only", 0.5],
+      ["📦", "Monthly haul", "Treat yourself", 0.9],
+      ["🛒", "Weekly online orders", "Cart always full", 1.5],
+      ["🚚", "Daily Swiggy + shop", "Delivery dependent", 2.0]
+    ]}
 ];
 
-let step = 0;
+let step = -1; // -1 = intro, 0..n-1 = questions, n = result
 const state = {};
 const app = document.getElementById("app");
 
 function render() {
   app.innerHTML = "";
+  if (step === -1) { renderIntro(); return; }
   const pips = document.createElement("div");
   pips.className = "progress-row";
   for (let i = 0; i < data.length; i++) {
@@ -113,22 +171,56 @@ function render() {
   else renderResult();
 }
 
+function renderIntro() {
+  const div = document.createElement("div");
+  div.className = "intro";
+  div.innerHTML = `
+    <div class="planet">🌍</div>
+    <h1>What's your carbon footprint?</h1>
+    <p>5 quick questions. Find out how your lifestyle stacks up against the planet's safe limit.</p>
+    <div class="stats">
+      <div class="stat"><b>2.0t</b>safe limit 🟢</div>
+      <div class="stat"><b>1.9t</b>India avg 🇮🇳</div>
+      <div class="stat"><b>4.7t</b>global avg 🌐</div>
+    </div>
+    <button class="btn primary" style="max-width:240px;margin:0 auto;display:block;" onclick="step=0;render()">Let's go →</button>
+  `;
+  app.appendChild(div);
+}
+
 function renderQuestion() {
   const cat = data[step];
   const label = document.createElement("div");
   label.className = "step-label";
-  label.textContent = `Step ${step + 1} of ${data.length}`;
+  label.textContent = `Question ${step + 1} of ${data.length}`;
   app.appendChild(label);
+  const em = document.createElement("div");
+  em.className = "emoji-big"; em.textContent = cat.emoji;
+  app.appendChild(em);
   const h = document.createElement("h1");
   h.textContent = cat.title;
   app.appendChild(h);
+  const ctx = document.createElement("p");
+  ctx.className = "context"; ctx.textContent = cat.context;
+  app.appendChild(ctx);
   const opts = document.createElement("div");
   opts.className = "options";
-  cat.options.forEach(([lab, val]) => {
+  cat.options.forEach(([em, lab, vibe, val]) => {
     const b = document.createElement("button");
     b.className = "opt" + (state[cat.key]?.label === lab ? " selected" : "");
-    b.innerHTML = `<span>${lab}</span><span class="val">${val.toFixed(1)} t</span>`;
-    b.onclick = () => { state[cat.key] = { label: lab, val }; render(); };
+    b.innerHTML = `
+      <div class="left">
+        <span class="emoji">${em}</span>
+        <span class="text">
+          <span class="label-text">${lab}</span>
+          <span class="vibe">${vibe}</span>
+        </span>
+      </div>
+      <span class="val">${val.toFixed(1)} t</span>`;
+    b.onclick = () => {
+      state[cat.key] = { label: lab, val, emoji: em, vibe };
+      render();
+    };
     opts.appendChild(b);
   });
   app.appendChild(opts);
@@ -149,46 +241,114 @@ function renderQuestion() {
 
 function renderResult() {
   const total = Object.values(state).reduce((s, v) => s + v.val, 0);
+
+  // pick verdict
+  let cls, em, msg, fact;
+  if (total <= 2) {
+    cls = "good"; em = "🌱";
+    msg = "Within the safe planetary limit. Genuinely rare.";
+    fact = "If everyone lived like you, we'd actually hit climate targets. 🎯";
+  } else if (total <= 4.7) {
+    cls = "warn"; em = "🌿";
+    msg = "Above the safe limit, below global average.";
+    fact = "Trim your biggest category and you're in the green zone.";
+  } else if (total <= 8) {
+    cls = "bad"; em = "🔥";
+    msg = "Above global average. Earth is sweating a bit.";
+    fact = "If everyone lived like you, we'd need ~2 Earths. We have one.";
+  } else {
+    cls = "bad"; em = "🚨";
+    msg = "Way above average. Time for some big swaps.";
+    fact = "If everyone lived like you, we'd need 3+ Earths. Yikes.";
+  }
+
   const label = document.createElement("div");
   label.className = "step-label"; label.textContent = "Your result";
   app.appendChild(label);
-  const h = document.createElement("h1");
-  h.textContent = "Your annual footprint";
-  app.appendChild(h);
+
+  const emEl = document.createElement("div");
+  emEl.className = "result-emoji"; emEl.textContent = em;
+  app.appendChild(emEl);
+
   const tot = document.createElement("div");
   tot.className = "result-total";
   tot.innerHTML = `<div class="num">${total.toFixed(1)}</div><div class="unit">tonnes CO₂e per year</div>`;
   app.appendChild(tot);
+
   const v = document.createElement("div");
-  let cls, msg;
-  if (total <= 2) { cls = "good"; msg = "Within the safe planetary limit. Genuinely rare."; }
-  else if (total <= 4.7) { cls = "warn"; msg = "Above safe limit, below global average. Room to trim."; }
-  else { cls = "bad"; msg = "Above global average. Start with your biggest category."; }
   v.className = "verdict " + cls; v.textContent = msg;
   app.appendChild(v);
-  const bar = document.createElement("div");
-  bar.className = "bar";
-  bar.innerHTML = `<div class="bar-fill" style="width:${Math.min(100,(total/8)*100)}%"></div>`;
-  app.appendChild(bar);
+
+  const factEl = document.createElement("p");
+  factEl.className = "fact"; factEl.textContent = fact;
+  app.appendChild(factEl);
+
+  // bar with marker
+  const barWrap = document.createElement("div");
+  barWrap.className = "bar-wrap";
+  const pct = Math.min(100, (total / 10) * 100);
+  barWrap.innerHTML = `
+    <div class="you-marker" style="left:${pct}%">📍</div>
+    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+  `;
+  app.appendChild(barWrap);
+
   const bm = document.createElement("div");
   bm.className = "benchmarks";
-  bm.innerHTML = `<span>Safe limit<strong>2.0 t</strong></span><span>India avg<strong>1.9 t</strong></span><span>Global avg<strong>4.7 t</strong></span>`;
+  bm.innerHTML = `
+    <span><span class="em">🟢</span><strong>2.0t</strong>safe</span>
+    <span><span class="em">🇮🇳</span><strong>1.9t</strong>India</span>
+    <span><span class="em">🌐</span><strong>4.7t</strong>global</span>
+    <span><span class="em">🇺🇸</span><strong>14t</strong>US</span>`;
   app.appendChild(bm);
+
+  // biggest contributor callout
+  const sorted = Object.entries(state).sort((a,b) => b[1].val - a[1].val);
+  if (sorted.length) {
+    const [bigKey, bigVal] = sorted[0];
+    const bigCat = data.find(c => c.key === bigKey);
+    const big = document.createElement("div");
+    big.className = "biggest";
+    big.innerHTML = `${bigCat.emoji} Your biggest contributor is <b>${bigKey}</b> at <b>${bigVal.val.toFixed(1)}t</b>. That's the lever with the most leverage.`;
+    app.appendChild(big);
+  }
+
   const bd = document.createElement("div");
   bd.className = "breakdown";
-  bd.innerHTML = `<h3>Breakdown</h3>`;
+  bd.innerHTML = `<h3>Full breakdown</h3>`;
   data.forEach(cat => {
     const s = state[cat.key];
     const row = document.createElement("div");
     row.className = "brow";
-    row.innerHTML = `<div><div class="label">${cat.key[0].toUpperCase()+cat.key.slice(1)}</div><div class="sub">${s.label}</div></div><div class="v">${s.val.toFixed(1)} t</div>`;
+    row.innerHTML = `
+      <div class="left">
+        <span class="em">${cat.emoji}</span>
+        <div>
+          <div class="label">${cat.key[0].toUpperCase()+cat.key.slice(1)}</div>
+          <div class="sub">${s.emoji} ${s.label}</div>
+        </div>
+      </div>
+      <div class="v">${s.val.toFixed(1)} t</div>`;
     bd.appendChild(row);
   });
   app.appendChild(bd);
-  const r = document.createElement("button");
-  r.className = "restart"; r.textContent = "↻ Start over";
-  r.onclick = () => { step = 0; for (const k in state) delete state[k]; render(); };
-  app.appendChild(r);
+
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.innerHTML = `
+    <button onclick="shareResult(${total.toFixed(1)})">📤 Share</button>
+    <button onclick="step=-1;Object.keys(state).forEach(k=>delete state[k]);render()">↻ Restart</button>
+  `;
+  app.appendChild(actions);
+}
+
+function shareResult(total) {
+  const text = `My annual carbon footprint is ${total} tonnes CO₂e 🌍. What's yours?`;
+  if (navigator.share) {
+    navigator.share({ title: "My Carbon Footprint", text, url: location.href }).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(text + " " + location.href).then(() => alert("Copied to clipboard! 📋"));
+  }
 }
 
 render();
