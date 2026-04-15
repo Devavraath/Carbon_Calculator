@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>What's Your Carbon Footprint?</title>
+<style>
+  :root {
+    --bg: #0f1a14; --panel: #16241c; --ink: #f1efe7; --muted: #9bb0a3;
+    --accent: #7ec96f; --accent-dim: #3a5f3a;
+    --warn: #e8a04a; --bad: #d96450; --good: #7ec96f; --border: #243a2d;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5; min-height: 100vh;
+  }
+  .wrap {
+    max-width: 640px; margin: 0 auto; padding: 32px 20px 40px;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  .progress-row { display: flex; gap: 6px; margin-bottom: 24px; }
+  .pip { flex: 1; height: 4px; background: var(--border); border-radius: 2px; transition: background 0.2s; }
+  .pip.done { background: var(--accent); }
+  .pip.current { background: var(--accent); opacity: 0.6; }
+  .step-label { color: var(--muted); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+  h1 { font-size: clamp(26px, 5vw, 36px); margin: 0 0 28px; letter-spacing: -0.02em; }
+  .options { display: grid; gap: 10px; flex: 1; }
+  .opt {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 16px 18px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--panel); color: var(--ink); cursor: pointer;
+    text-align: left; font-size: 16px; transition: all 0.15s ease; font-family: inherit;
+  }
+  .opt:hover { border-color: var(--accent-dim); }
+  .opt.selected { background: rgba(126,201,111,0.15); border-color: var(--accent); }
+  .opt .val { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 14px; }
+  .opt.selected .val { color: var(--accent); font-weight: 600; }
+  .nav { display: flex; justify-content: space-between; gap: 12px; margin-top: 28px; }
+  .btn {
+    padding: 14px 24px; border-radius: 8px; border: 1px solid var(--border);
+    background: transparent; color: var(--ink); font-size: 15px; font-family: inherit;
+    cursor: pointer; transition: all 0.15s; flex: 1; max-width: 200px;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+  .btn.primary:hover:not(:disabled) { background: #95d886; }
+  .result-total { text-align: center; margin: 32px 0; }
+  .result-total .num { font-size: 96px; font-weight: 700; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .result-total .unit { font-size: 18px; color: var(--muted); margin-top: 4px; }
+  .verdict { text-align: center; font-size: 18px; margin: 16px 0 24px; padding: 14px; border-radius: 8px; }
+  .verdict.good { background: rgba(126,201,111,0.12); color: var(--good); }
+  .verdict.warn { background: rgba(232,160,74,0.12); color: var(--warn); }
+  .verdict.bad  { background: rgba(217,100,80,0.12);  color: var(--bad); }
+  .bar { height: 10px; background: #1f2f25; border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+  .bar-fill { height: 100%; background: linear-gradient(90deg, var(--good), var(--warn) 50%, var(--bad)); transition: width 0.5s ease; }
+  .benchmarks { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .benchmarks span strong { color: var(--ink); display: block; }
+  .breakdown { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 24px; }
+  .breakdown h3 { margin: 0 0 14px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .brow { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .brow:last-child { border: none; }
+  .brow .label { color: var(--ink); }
+  .brow .sub { color: var(--muted); font-size: 12px; }
+  .brow .v { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
+  .restart { width: 100%; padding: 14px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--ink); cursor: pointer; font-family: inherit; font-size: 15px; }
+  .restart:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const data = [
+  { key: "flights", title: "How many flights per year?", options: [
+    ["0 flights", 0], ["1–2 flights", 0.5], ["3–5 flights", 1.5],
+    ["6–10 flights", 4.5], ["10+ flights", 7.0]
+  ]},
+  { key: "driving", title: "Daily commute & driving?", options: [
+    ["WFH / no car", 0.1], ["Two-wheeler", 0.4], ["Car <10km/day", 0.8],
+    ["Car 10–30km/day", 1.8], ["Car 30km+/day", 3.0]
+  ]},
+  { key: "diet", title: "What's your diet?", options: [
+    ["Fully vegan", 0.5], ["Vegetarian", 0.9], ["Meat 1–2x/week", 1.2],
+    ["Meat 3–5x/week", 1.8], ["Meat daily", 2.5]
+  ]},
+  { key: "energy", title: "Home energy use (AC / heating)?", options: [
+    ["Fan only", 0.2], ["AC a few hours", 0.7], ["AC most of day", 1.4],
+    ["AC all day + night", 2.1], ["Central AC + heater", 3.0]
+  ]},
+  { key: "shopping", title: "Shopping & deliveries?", options: [
+    ["Buy very little", 0.2], ["Few times/year", 0.5], ["Monthly", 0.9],
+    ["Weekly online", 1.5], ["Daily Swiggy + shop", 2.0]
+  ]}
+];
+
+let step = 0;
+const state = {};
+const app = document.getElementById("app");
+
+function render() {
+  app.innerHTML = "";
+  const pips = document.createElement("div");
+  pips.className = "progress-row";
+  for (let i = 0; i < data.length; i++) {
+    const p = document.createElement("div");
+    p.className = "pip" + (i < step ? " done" : i === step ? " current" : "");
+    pips.appendChild(p);
+  }
+  app.appendChild(pips);
+  if (step < data.length) renderQuestion();
+  else renderResult();
+}
+
+function renderQuestion() {
+  const cat = data[step];
+  const label = document.createElement("div");
+  label.className = "step-label";
+  label.textContent = `Step ${step + 1} of ${data.length}`;
+  app.appendChild(label);
+  const h = document.createElement("h1");
+  h.textContent = cat.title;
+  app.appendChild(h);
+  const opts = document.createElement("div");
+  opts.className = "options";
+  cat.options.forEach(([lab, val]) => {
+    const b = document.createElement("button");
+    b.className = "opt" + (state[cat.key]?.label === lab ? " selected" : "");
+    b.innerHTML = `<span>${lab}</span><span class="val">${val.toFixed(1)} t</span>`;
+    b.onclick = () => { state[cat.key] = { label: lab, val }; render(); };
+    opts.appendChild(b);
+  });
+  app.appendChild(opts);
+  const nav = document.createElement("div");
+  nav.className = "nav";
+  const back = document.createElement("button");
+  back.className = "btn"; back.textContent = "← Back";
+  back.disabled = step === 0;
+  back.onclick = () => { step--; render(); };
+  const next = document.createElement("button");
+  next.className = "btn primary";
+  next.textContent = step === data.length - 1 ? "See result →" : "Next →";
+  next.disabled = !state[cat.key];
+  next.onclick = () => { step++; render(); };
+  nav.appendChild(back); nav.appendChild(next);
+  app.appendChild(nav);
+}
+
+function renderResult() {
+  const total = Object.values(state).reduce((s, v) => s + v.val, 0);
+  const label = document.createElement("div");
+  label.className = "step-label"; label.textContent = "Your result";
+  app.appendChild(label);
+  const h = document.createElement("h1");
+  h.textContent = "Your annual footprint";
+  app.appendChild(h);
+  const tot = document.createElement("div");
+  tot.className = "result-total";
+  tot.innerHTML = `<div class="num">${total.toFixed(1)}</div><div class="unit">tonnes CO₂e per year</div>`;
+  app.appendChild(tot);
+  const v = document.createElement("div");
+  let cls, msg;
+  if (total <= 2) { cls = "good"; msg = "Within the safe planetary limit. Genuinely rare."; }
+  else if (total <= 4.7) { cls = "warn"; msg = "Above safe limit, below global average. Room to trim."; }
+  else { cls = "bad"; msg = "Above global average. Start with your biggest category."; }
+  v.className = "verdict " + cls; v.textContent = msg;
+  app.appendChild(v);
+  const bar = document.createElement("div");
+  bar.className = "bar";
+  bar.innerHTML = `<div class="bar-fill" style="width:${Math.min(100,(total/8)*100)}%"></div>`;
+  app.appendChild(bar);
+  const bm = document.createElement("div");
+  bm.className = "benchmarks";
+  bm.innerHTML = `<span>Safe limit<strong>2.0 t</strong></span><span>India avg<strong>1.9 t</strong></span><span>Global avg<strong>4.7 t</strong></span>`;
+  app.appendChild(bm);
+  const bd = document.createElement("div");
+  bd.className = "breakdown";
+  bd.innerHTML = `<h3>Breakdown</h3>`;
+  data.forEach(cat => {
+    const s = state[cat.key];
+    const row = document.createElement("div");
+    row.className = "brow";
+    row.innerHTML = `<div><div class="label">${cat.key[0].toUpperCase()+cat.key.slice(1)}</div><div class="sub">${s.label}</div></div><div class="v">${s.val.toFixed(1)} t</div>`;
+    bd.appendChild(row);
+  });
+  app.appendChild(bd);
+  const r = document.createElement("button");
+  r.className = "restart"; r.textContent = "↻ Start over";
+  r.onclick = () => { step = 0; for (const k in state) delete state[k]; render(); };
+  app.appendChild(r);
+}
+
+render();
+</script>
+</body>
+</html>
