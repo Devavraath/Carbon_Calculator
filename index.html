@@ -77,14 +77,36 @@
   .verdict.warn { background: rgba(232,160,74,0.12); color: var(--warn); }
   .verdict.bad  { background: rgba(217,100,80,0.12);  color: var(--bad); }
   .fact { text-align: center; font-size: 13px; color: var(--muted); margin: 0 0 24px; padding: 0 12px; }
-  .bar-wrap { margin-bottom: 8px; position: relative; padding-top: 18px; }
+
+  /* Bar + aligned benchmarks */
+  .scale-wrap { position: relative; margin: 0 0 36px; padding-top: 22px; }
   .bar { height: 12px; background: #1f2f25; border-radius: 6px; overflow: hidden; position: relative; }
   .bar-fill { height: 100%; background: linear-gradient(90deg, var(--good), var(--warn) 50%, var(--bad)); transition: width 0.8s ease; }
-  .you-marker { position: absolute; top: 0; transform: translateX(-50%); font-size: 16px; transition: left 0.8s ease; }
-  .benchmarks { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 28px; }
-  .benchmarks span { text-align: center; flex: 1; }
-  .benchmarks span strong { color: var(--ink); display: block; font-size: 14px; }
-  .benchmarks span .em { font-size: 16px; display: block; margin-bottom: 2px; }
+  .you-marker {
+    position: absolute; top: 0; transform: translateX(-50%);
+    font-size: 16px; transition: left 0.8s ease; z-index: 3;
+    text-shadow: 0 0 4px var(--bg);
+  }
+  .you-label {
+    position: absolute; top: -4px; transform: translateX(-50%);
+    font-size: 10px; color: var(--accent); font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap;
+    transition: left 0.8s ease;
+  }
+  .bench-tick {
+    position: absolute; top: 22px; width: 1px; height: 18px;
+    background: var(--border); transform: translateX(-50%);
+  }
+  .bench-label {
+    position: absolute; top: 44px; transform: translateX(-50%);
+    font-size: 11px; color: var(--muted); text-align: center;
+    white-space: nowrap; line-height: 1.2;
+  }
+  .bench-label .em { font-size: 13px; display: block; margin-bottom: 1px; }
+  .bench-label strong { color: var(--ink); font-size: 12px; display: block; }
+
+  .biggest { background: rgba(232,160,74,0.1); border: 1px solid rgba(232,160,74,0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px; margin-top: 44px; }
+  .biggest b { color: var(--warn); }
   .breakdown { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; margin-bottom: 16px; }
   .breakdown h3 { margin: 0 0 14px; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .brow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
@@ -94,8 +116,6 @@
   .brow .label { color: var(--ink); }
   .brow .sub { color: var(--muted); font-size: 12px; }
   .brow .v { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
-  .biggest { background: rgba(232,160,74,0.1); border: 1px solid rgba(232,160,74,0.3); border-radius: 10px; padding: 14px; margin-bottom: 16px; font-size: 14px; }
-  .biggest b { color: var(--warn); }
   .actions { display: flex; gap: 10px; }
   .actions button { flex: 1; padding: 14px; background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--ink); cursor: pointer; font-family: inherit; font-size: 14px; }
   .actions button:hover { border-color: var(--accent); }
@@ -152,7 +172,16 @@ const data = [
     ]}
 ];
 
-let step = -1; // -1 = intro, 0..n-1 = questions, n = result
+// Bar scale: 0 to SCALE_MAX tonnes. 15 comfortably fits the 14t US benchmark.
+const SCALE_MAX = 15;
+const BENCHMARKS = [
+  { val: 1.9, em: "🇮🇳", label: "India" },
+  { val: 2.0, em: "🟢", label: "safe" },
+  { val: 4.7, em: "🌐", label: "global" },
+  { val: 14,  em: "🇺🇸", label: "US" }
+];
+
+let step = -1;
 const state = {};
 const app = document.getElementById("app");
 
@@ -239,10 +268,13 @@ function renderQuestion() {
   app.appendChild(nav);
 }
 
+function pctOf(val) {
+  return Math.min(100, Math.max(0, (val / SCALE_MAX) * 100));
+}
+
 function renderResult() {
   const total = Object.values(state).reduce((s, v) => s + v.val, 0);
 
-  // pick verdict
   let cls, em, msg, fact;
   if (total <= 2) {
     cls = "good"; em = "🌱";
@@ -283,26 +315,62 @@ function renderResult() {
   factEl.className = "fact"; factEl.textContent = fact;
   app.appendChild(factEl);
 
-  // bar with marker
-  const barWrap = document.createElement("div");
-  barWrap.className = "bar-wrap";
-  const pct = Math.min(100, (total / 10) * 100);
-  barWrap.innerHTML = `
-    <div class="you-marker" style="left:${pct}%">📍</div>
-    <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
-  `;
-  app.appendChild(barWrap);
+  // Scale bar with properly positioned benchmarks
+  const youPct = pctOf(total);
+  const scale = document.createElement("div");
+  scale.className = "scale-wrap";
 
-  const bm = document.createElement("div");
-  bm.className = "benchmarks";
-  bm.innerHTML = `
-    <span><span class="em">🟢</span><strong>2.0t</strong>safe</span>
-    <span><span class="em">🇮🇳</span><strong>1.9t</strong>India</span>
-    <span><span class="em">🌐</span><strong>4.7t</strong>global</span>
-    <span><span class="em">🇺🇸</span><strong>14t</strong>US</span>`;
-  app.appendChild(bm);
+  // "YOU" label + marker above bar, at true position
+  const youLabel = document.createElement("div");
+  youLabel.className = "you-label";
+  youLabel.style.left = youPct + "%";
+  youLabel.textContent = "you";
+  scale.appendChild(youLabel);
 
-  // biggest contributor callout
+  const youMarker = document.createElement("div");
+  youMarker.className = "you-marker";
+  youMarker.style.left = youPct + "%";
+  youMarker.textContent = "📍";
+  scale.appendChild(youMarker);
+
+  // The bar itself
+  const bar = document.createElement("div");
+  bar.className = "bar";
+  bar.innerHTML = `<div class="bar-fill" style="width:${youPct}%"></div>`;
+  scale.appendChild(bar);
+
+  // Benchmark ticks + labels at their real positions.
+  // Nudge 1.9 and 2.0 apart slightly so their labels don't collide.
+  const bms = BENCHMARKS.map(b => ({ ...b, pct: pctOf(b.val) }));
+  // detect overlap between India (1.9) and safe (2.0) — they're ~0.7% apart on a 0-15 scale
+  // so we offset their label positions while keeping ticks at true values
+  const labelOffsets = {};
+  for (let i = 0; i < bms.length; i++) {
+    for (let j = i + 1; j < bms.length; j++) {
+      if (Math.abs(bms[i].pct - bms[j].pct) < 6) {
+        labelOffsets[i] = (labelOffsets[i] || 0) - 3;
+        labelOffsets[j] = (labelOffsets[j] || 0) + 3;
+      }
+    }
+  }
+
+  bms.forEach((b, i) => {
+    const tick = document.createElement("div");
+    tick.className = "bench-tick";
+    tick.style.left = b.pct + "%";
+    scale.appendChild(tick);
+
+    const lab = document.createElement("div");
+    lab.className = "bench-label";
+    const labelPct = b.pct + (labelOffsets[i] || 0);
+    lab.style.left = labelPct + "%";
+    lab.innerHTML = `<span class="em">${b.em}</span><strong>${b.val}t</strong>${b.label}`;
+    scale.appendChild(lab);
+  });
+
+  app.appendChild(scale);
+
+  // biggest contributor
   const sorted = Object.entries(state).sort((a,b) => b[1].val - a[1].val);
   if (sorted.length) {
     const [bigKey, bigVal] = sorted[0];
